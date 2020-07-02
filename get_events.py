@@ -26,22 +26,34 @@ def get_calendar(calendar):
 def transform_to_madrid_timestamp(date, is_end_date):
     time_to_add = '23:59:59' if is_end_date else '00:00:00'
     date_format ='{} {}'.format(date, time_to_add)
-    return datetime.datetime.strptime(date_format, '%Y-%m-%d %H:%M:%S').astimezone(pytz.timezone('Europe/Madrid')).isoformat('T')
+  
+    return datetime.datetime.strptime(date_format, '%Y-%m-%d %H:%M:%S').astimezone(pytz.timezone('Europe/Madrid'))
 
-def get_events(calendar, date_ini = None, date_end = None):
+
+def filter_events(events, ini, end):
+    events_filtered = []
+    for event in events['items']:
+        event_start_time = datetime.datetime.strptime(event['start']['dateTime'], '%Y-%m-%dT%H:%M:%S%z')
+        event_end_time = datetime.datetime.strptime(event['end']['dateTime'], '%Y-%m-%dT%H:%M:%S%z')
+        if event_start_time>=ini and event_end_time<=end:
+            events_filtered.append(event)
+   
+    return events_filtered
+
+
+def get_events(calendar, date_ini=None, date_end=None):
     datetime_ini = transform_to_madrid_timestamp(date=date_ini, is_end_date=False)
     datetime_end = transform_to_madrid_timestamp(date=date_end, is_end_date=True)
-
-    # zzz: why us giving events before the datetime_ini
     
-    print(datetime_ini, datetime_end)
     calendar_info = get_calendar(calendar)
+    
+    raw_events = service.events().list(calendarId=calendar_info['id'], 
+                                timeMin=datetime_ini.isoformat('T'), 
+                                timeMax=datetime_end.isoformat('T')).execute()
 
-    events = service.events().list(calendarId=calendar_info['id'], 
-                                timeMin=datetime_ini, 
-                                timeMax=datetime_end).execute()
+    events_filtered = filter_events(events=raw_events, ini=datetime_ini, end=datetime_end)
 
-    return events
+    return events_filtered
     
 
 
